@@ -24,66 +24,80 @@ The images for camera calibration are stored in the folder called `data/camera_c
 
 ### Camera Calibration
 
-#### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
+#### 1. Computation of the camera matrix and distortion coefficients with an example of a distortion corrected calibration image.
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
+The code for this step is contained in the file `transformation.py` and function `get_camera_calibration_matrix()`.  
 
 I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
+![Corners Connected][./examples/chessboard.jpg]
 
-![alt text][image1]
+I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
 
 ### Pipeline (single images)
 
-#### 1. Provide an example of a distortion-corrected image.
+#### 1. An example of a distortion-corrected image.
 
 To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
-![alt text][image2]
 
-#### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
+![Undistored Chessboard Image][./examples/undistort_output.jpg]
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+![Undistored Highway Image][./examples/undistorted.jpg]
 
-![alt text][image3]
+#### 2. Thresholded binary image creation.
+
+I used a combination of color-spaces and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `Advance lane finding pipeline.ipynb` in function `get_thresholded_image()`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+
+Sequence of Image Processing task in pipeline
+    1. Color thresholding using LUV color space
+    2. Color thresholding using LAB color space
+    3. Color thresholding using HSV color space
+    4. Combining horizontal and vertical gradients with magnitude threshold
+    5. Median blur gradient image
+    6. Combine outputs images of steps 1, 2, 3 and 5 
+
+![Thresholding Pipeline][./examples/thresholding-pipeline.png]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The code for my perspective transform is included in a function called `warp_image()` and `get_perspective_matrices()` both are present in `transformation.py`. The `get_perspective_matrices()` function takes two arrays `src` and `dst` to generate a corresponding transformation matrix. `src` and `dst` are handcrafted to represent an perspective transformation, `src` and `dst` are present in `Advance lane finding pipeline.ipynb`.
 
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+```
+src = np.float32([ [575, 464], [738, 464], [1005, 694], [290, 694] ])
+dst = np.float32([ [180, 0], [540, 0], [540, 720], [180, 720] ])
 ```
 
-This resulted in the following source and destination points:
+The transformation matrix (which is perspective transform in our case) and an image (which has to be transformed) is passed as an argument to function `warp_image()`.
 
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+The example shown above is of an color image however for our problem we use binary-image generated by function `get_thresholded_image()`.  
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![alt text][image4]
+![Perspective transform of lane image][./examples/warped_straight_lines.jpg]
 
-#### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+#### 4.Lane line detection
+
+Steps of lane line detection:
+
+* If current frame is first video frame:
+  + use Sliding Window method
+* else
+  + use Search from prior
+* Either methods would generate a two sets of cor-ordinates one for left lane and one for right lane, these points are feed to `fit_poly()` 
+
+* Sliding Window
+  1. method `group_lane_pixels_using_sliding_window()` present in file `lane_line.py`
+  2. Start by generating histgrom of thresholded-binary-perspective-transformed-image to find two lane centers.
+  3. Using calculated lane centers start a sliding window search
+
+* Search from prior
+  + method `group_lane_pixels_using_prev_frame()` present in file `lane_line.py`
 
 Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
 
 ![alt text][image5]
 
-#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+#### 5. Calculating radius of curvature of the lane and the position of the vehicle with respect to center.
 
 I did this in lines # through # in my code in `my_other_file.py`
 
@@ -97,9 +111,9 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 ### Pipeline (video)
 
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+#### 1. Link to final video output.
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./output/output_videos/project_video.mp4)
 
 ---
 
