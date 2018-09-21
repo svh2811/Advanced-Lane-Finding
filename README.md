@@ -83,19 +83,20 @@ Steps of lane line detection:
   + use Sliding Window method
 * else
   + use Search from prior
-* Either methods would generate a two sets of cor-ordinates one for left lane and one for right lane, these points are feed to `fit_poly()` 
+* Either methods would generate a two sets of cor-ordinates one for left lane and one for right lane, these points are feed to `fit_poly()` which attempts to fit a quadratic polynomial curve for each lane 
+* ![Lane curves][./examples/color_fit_lines.jpg]
 
-* Sliding Window
+Sliding Window
   1. method `group_lane_pixels_using_sliding_window()` present in file `lane_line.py`
   2. Start by generating histgrom of thresholded-binary-perspective-transformed-image to find two lane centers.
-  3. Using calculated lane centers start a sliding window search
+  3. ![Histogram][./examples/histogram.png]
+  4. Using calculated lane centers, start a sliding window search from bottom of the image and sliding upwards following white pixels in the image.
+  5. ![Sliding window][./examples/sliding-window.png]
 
-* Search from prior
-  + method `group_lane_pixels_using_prev_frame()` present in file `lane_line.py`
-
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
-
-![alt text][image5]
+Search from prior
+  1. method `group_lane_pixels_using_prev_frame()` present in file `lane_line.py`
+  2. This method uses the lane points detected in the  previous image frame to narrow down the search region to search lane.
+  3. ![Sliding prior][./examples/saving-prior.png]
 
 #### 5. Calculating radius of curvature of the lane and the position of the vehicle with respect to center.
 
