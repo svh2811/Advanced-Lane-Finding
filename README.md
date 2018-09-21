@@ -100,13 +100,13 @@ Search from prior
 
 #### 5. Calculating radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+method `measure_curvature_real_and_car_distance_from_center()` present in `lane_line.py` is used to calulate car's distance from center and lane's curvature. 
 
-#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+#### 6. Drawing Lane.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+`overlay_lane_region()` and `write_lane_data()` function present in file `lane_lines.py` are used to color lane region and write curvature radius and car's distance from center information on video image frame.
 
-![alt text][image6]
+![Sliding prior][./examples/example_output.jpg]
 
 ---
 
