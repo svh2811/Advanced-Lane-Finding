@@ -23,9 +23,14 @@ def color_in_range(image, low_threshold, high_threshold):
     return res
 
 
-def get_plot_as_np_array(plt):
-    fileName = tempFile.gettempdir() + "/plot.png"
+def get_plot_as_np_array(plt, display_axis = True):
+    fileName = tempfile.gettempdir() + "/plot.png"
+    plt.rcParams["figure.figsize"] = [50, 30]
+    plt.tight_layout()
+    if not display_axis:
+        plt.axis('off')
     plt.savefig(fileName)
+    plt.close()
     return bgr_to_rgb(cv2.imread(fileName))
 
 
@@ -40,6 +45,10 @@ def plot_images_along_row(images, figsize = [19, 8]):
     n = len(images)
     for i in range(n):
         a = fig.add_subplot(1, n, i+1)
+
+        if len(images[i]) == 3:
+            if images[i][2]:
+                a.axis("off")
         if (len(images[i][1].shape) == 2):
             imgplot = plt.imshow(images[i][1], cmap='gray',\
                                             vmin = 0, vmax = 1)
@@ -55,8 +64,12 @@ def bgr_to_rgb(img):
     return img
 
 
-def blur(img, kernel):
+def gauss_blur(img, kernel):
     return cv2.GaussianBlur(img, (kernel, kernel), 0)
+
+
+def median_blur(img, kernel):
+    return cv2.medianBlur(img, kernel)
 
 
 def get_file_name_from_path(path):
