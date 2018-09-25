@@ -109,8 +109,13 @@ method `measure_curvature_real_and_car_distance_from_center()` present in `lane_
 
 ---
 
-### Pipeline (video)
+### Pipeline
 
+#### 1. Summary of entire image processing pipeline
+![Thresholding Pipeline](./examples/thresholding-pipeline.png)
+![Lane Detection Pipeline](./examples/lane-pipeline.png)
+
+#### 2. Video
 Here's a [link to my video result](./output/output_videos/project_video.mp4)
 
 ---
