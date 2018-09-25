@@ -71,7 +71,8 @@ The example shown above is of an color image however for our problem we use bina
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![Perspective transform of lane image](./examples/warped_straight_lines.jpg)
+![Perspective transform of lane image 01](./examples/warped_lane_image_01.jpg)
+![Perspective transform of lane image 02](./examples/warped_lane_image_02.jpg)
 
 #### 4.Lane line detection
 
