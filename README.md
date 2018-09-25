@@ -39,9 +39,9 @@ I then used the output `objpoints` and `imgpoints` to compute the camera calibra
 
 To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
 
-![Undistored Chessboard Image][./examples/undistort_output.jpg]
+![Undistored Chessboard Image](./examples/undistort_output.jpg)
 
-![Undistored Highway Image][./examples/undistorted.jpg]
+![Undistored Highway Image](./examples/undistorted.jpg)
 
 #### 2. Thresholded binary image creation.
 
@@ -55,7 +55,7 @@ Sequence of Image Processing task in pipeline
     5. Median blur gradient image
     6. Combine outputs images of steps 1, 2, 3 and 5 
 
-![Thresholding Pipeline][./examples/thresholding-pipeline.png]
+![Thresholding Pipeline](./examples/thresholding-pipeline.png)
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
@@ -72,7 +72,7 @@ The example shown above is of an color image however for our problem we use bina
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![Perspective transform of lane image][./examples/warped_straight_lines.jpg]
+![Perspective transform of lane image](./examples/warped_straight_lines.jpg)
 
 #### 4.Lane line detection
 
@@ -83,19 +83,19 @@ Steps of lane line detection:
 * else
   + use Search from prior
 * Either methods would generate a two sets of cor-ordinates one for left lane and one for right lane, these points are feed to `fit_poly()` which attempts to fit a quadratic polynomial curve for each lane 
-* ![Lane curves][./examples/color_fit_lines.jpg]
+* ![Lane curves](./examples/color_fit_lines.jpg)
 
 Sliding Window
   1. method `group_lane_pixels_using_sliding_window()` present in file `lane_line.py`
   2. Start by generating histgrom of thresholded-binary-perspective-transformed-image to find two lane centers.
-  3. ![Histogram][./examples/histogram.png]
+  3. ![Histogram](./examples/histogram.png)
   4. Using calculated lane centers, start a sliding window search from bottom of the image and sliding upwards following white pixels in the image.
-  5. ![Sliding window][./examples/sliding-window.png]
+  5. ![Sliding window](./examples/sliding-window.png)
 
 Search from prior
   1. method `group_lane_pixels_using_prev_frame()` present in file `lane_line.py`
   2. This method uses the lane points detected in the  previous image frame to narrow down the search region to search lane.
-  3. ![Sliding prior][./examples/saving-prior.png]
+  3. ![Sliding prior](./examples/saving-prior.png)
 
 #### 5. Calculating radius of curvature of the lane and the position of the vehicle with respect to center.
 
@@ -105,7 +105,7 @@ method `measure_curvature_real_and_car_distance_from_center()` present in `lane_
 
 `overlay_lane_region()` and `write_lane_data()` function present in file `lane_lines.py` are used to color lane region and write curvature radius and car's distance from center information on video image frame.
 
-![Sliding prior][./examples/example_output.jpg]
+![Sliding prior](./examples/example_output.jpg)
 
 ---
 
