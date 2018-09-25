@@ -39,9 +39,8 @@ I then used the output `objpoints` and `imgpoints` to compute the camera calibra
 
 To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
 
-![Undistored Chessboard Image](./examples/undistort_output.jpg)
-
-![Undistored Highway Image](./examples/undistorted.jpg)
+![Undistored Highway Image 01](./examples/undistort_output_01.png)
+![Undistored Highway Image 02](./examples/undistort_output_01.png)
 
 #### 2. Thresholded binary image creation.
 
