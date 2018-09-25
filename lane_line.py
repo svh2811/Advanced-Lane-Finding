@@ -2,18 +2,25 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+from scipy.ndimage.filters import gaussian_filter1d
+
+from curve_queue import QueueCurve
 
 class Frame:
     def __init__(self):
+        self.frameNum = -1
         self.isFirstFrame = True
         self.leftLane = Lane()
         self.rightLane = Lane()
-        self.histogram = None
+        self.histogram = {}
         self.distanceFromLaneCenter = None
         self.outImage = None
         self.vizMetadata = None
         self.laneWidth = None
-
+        self.verbose_log = False
+        #self.curveHistCount = curveHistCount
+        #self.leftCurveHist = QueueCurve(curveHistCount)
+        #self.rightCurveHist = QueueCurve(curveHistCount)
 
 class Lane:
     def __init__(self):
@@ -28,18 +35,21 @@ class Lane:
 """
 group_lane_pixels()
 is used to find and group lane pixels into left and right lane groups
-This method does not relie on previous frame
+This method does not rely on previous frame
 
 nwindows = the number of sliding windows
 margin = the width of the windows +/- margin
 minpix = minimum number of pixels found to recenter window
 """
 def group_lane_pixels_using_sliding_window(binary_warped, frame,
-                                    nwindows = 10, margin = 100, minpix = 50):
+                                    nwindows = 10, margin = 50, minpix = 50):
+    H, W = binary_warped.shape
+
     # Take a histogram of the bottom half of the image
     # by summing all pixel in a column
-    histogram = np.sum(binary_warped[binary_warped.shape[0]//2:,:], axis=0)
-    frame.histogram = histogram
+    histogram = np.sum(binary_warped[H//2:,:], axis=0)
+    histogram = gaussian_filter1d(histogram, 20)
+    frame.histogram["curve"] = histogram
 
     # Find the peak of the left and right halves of the histogram
     # These will be the starting point for the left and right lines
@@ -47,8 +57,11 @@ def group_lane_pixels_using_sliding_window(binary_warped, frame,
     leftx_base = np.argmax(histogram[:midpoint])
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
+    frame.histogram["leftx_base"] = leftx_base
+    frame.histogram["rightx_base"] = rightx_base
+
     # height of windows - based on nwindows above and image shape
-    window_height = np.int(binary_warped.shape[0]//nwindows)
+    window_height = np.int(H//nwindows)
 
     # Identify the x and y positions of all nonzero pixels in the image
     nonzero = binary_warped.nonzero()
@@ -71,8 +84,8 @@ def group_lane_pixels_using_sliding_window(binary_warped, frame,
     # Step through the windows one by one
     for window in range(nwindows):
         # Identify window boundaries in x and y (and right and left)
-        win_y_low = binary_warped.shape[0] - (window + 1) * window_height
-        win_y_high = binary_warped.shape[0] - window * window_height
+        win_y_low = H - (window + 1) * window_height
+        win_y_high = H - window * window_height
         win_xleft_low = leftx_current - margin
         win_xleft_high = leftx_current + margin
         win_xright_low = rightx_current - margin
@@ -82,7 +95,6 @@ def group_lane_pixels_using_sliding_window(binary_warped, frame,
                                         (win_xleft_high,win_y_high),
                                         (win_xright_low,win_y_low),
                                         (win_xright_high,win_y_high)]]
-
 
         # Identify the nonzero pixels in x and y within the window #
         good_left_idxs = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high)
@@ -98,10 +110,15 @@ def group_lane_pixels_using_sliding_window(binary_warped, frame,
 
         # If more than 'minpix pixels' were found,
         # recenter next window on their mean position
+        new_leftx_current = leftx_current
+        new_rightx_current = rightx_current
         if len(good_left_idxs) >= minpix:
-            leftx_current = np.int(np.mean(nonzerox[good_left_idxs]))
+            new_leftx_current = np.int(np.mean(nonzerox[good_left_idxs]))
         if len(good_right_idxs) >= minpix:
-            rightx_current = np.int(np.mean(nonzerox[good_right_idxs]))
+            new_rightx_current = np.int(np.mean(nonzerox[good_right_idxs]))
+
+        leftx_current = int((leftx_current + new_leftx_current) / 2)
+        rightx_current = int((rightx_current + new_rightx_current) / 2)
 
     # Concatenate the arrays of indices (previously was a list of lists of pixels)
     try:
@@ -124,7 +141,14 @@ def group_lane_pixels_using_sliding_window(binary_warped, frame,
 
 def visualize_sliding_windows(binary_warped, frame):
     # Create an output image to draw on and visualize the result
+    H, W = binary_warped.shape
     out_img = np.dstack((binary_warped, binary_warped, binary_warped))
+
+    radius = 30
+    cv2.circle(out_img, (frame.histogram["leftx_base"], H - radius),\
+            radius, (255, 255, 0), -1)
+    cv2.circle(out_img, (frame.histogram["rightx_base"], H - radius),\
+            radius, (0, 255, 255), -1)
 
     for meta in frame.vizMetadata["coords"]:
         # Draw the windows on the visualization image
@@ -147,7 +171,7 @@ def visualize_sliding_windows(binary_warped, frame):
     return out_img
 
 
-def group_lane_pixels_using_prev_frame(binary_warped, frame, margin = 100):
+def group_lane_pixels_using_prev_frame(binary_warped, frame, margin = 40):
     # margin : the width of the around the previous polynomial to search
 
     # Grab activated pixels
@@ -157,6 +181,9 @@ def group_lane_pixels_using_prev_frame(binary_warped, frame, margin = 100):
 
     left_fit = frame.leftLane.fitCurve
     right_fit = frame.rightLane.fitCurve
+    if (frame.verbose_log):
+        print("Left  Curve: ", left_fit)
+        print("Right Curve: ", right_fit)
 
     # Set the area of search based on activated x-values ###
     # within the +/- margin of our polynomial function ###
@@ -225,9 +252,7 @@ def visualize_search_region_around_prev_lane(binary_warped, frame):
     cv2.fillPoly(window_img, np.int_([right_line_pts]), (0,255, 0))
     result = cv2.addWeighted(out_img, 1, window_img, 0.3, 0)
 
-
     ## End visualization steps ##
-
     return result
 
 
@@ -274,12 +299,27 @@ def process_frame(binary_warped, frame):
         leftx, lefty, rightx, righty =\
         group_lane_pixels_using_prev_frame(binary_warped, frame)
 
+        if leftx.shape[0] == 0 or rightx.shape[0] == 0:
+            leftx, lefty, rightx, righty =\
+             group_lane_pixels_using_sliding_window(binary_warped, frame)
 
     #########################################################################
     # Fit a new curve using points obtained by either group lane functions #
     #########################################################################
     left_curve, right_curve, left_fitx, right_fitx, ploty =\
                     fit_poly(binary_warped.shape, leftx, lefty, rightx, righty)
+
+    """
+    frame.leftCurveHist.enqueue(left_curve)
+    frame.rightCurveHist.enqueue(right_curve)
+
+    if (frame.frameNum > frame.curveHistCount):
+        frame.leftLane.fitCurve = frame.leftCurveHist.mean()
+        frame.rightLane.fitCurve = frame.rightCurveHist.mean()
+    else:
+        frame.leftLane.fitCurve = left_curve
+        frame.rightLane.fitCurve = right_curve
+    """
 
     frame.leftLane.fitCurve = left_curve
     frame.rightLane.fitCurve = right_curve
@@ -288,7 +328,8 @@ def process_frame(binary_warped, frame):
     frame.leftLane.Y = ploty
     frame.rightLane.X = right_fitx
     frame.rightLane.Y = ploty
-    measure_curvature_real(frame)
+    measure_curvature_real_and_car_distance_from_center(frame,
+        binary_warped.shape)
 
     # Create an output image to draw on and visualize the result
     out_img = np.dstack((binary_warped, binary_warped, binary_warped))
@@ -302,7 +343,7 @@ def process_frame(binary_warped, frame):
 
 # Calculates the curvature of polynomial functions in pixels.
 # https://www.intmath.com/applications-differentiation/8-radius-curvature.php
-def measure_curvature_real(frame):
+def measure_curvature_real_and_car_distance_from_center(frame, dim):
     leftx = frame.leftLane.X
     rightx = frame.rightLane.X
     lane_width = np.mean(np.abs(leftx- rightx))
@@ -330,18 +371,19 @@ def measure_curvature_real(frame):
     frame.rightLane.radius = ((1 + (2 * a * y_eval * ym_per_pix + b) ** 2)\
                                 ** 1.5) / np.absolute(2 * a)
 
-
-def get_dist_from_lane_center(dim, frame):
+    # -------------------------------------------------------------------------
     H, W = dim
     image_center = W / 2
-    left_fit_curve = frame.leftLane.currentFitCurve
-    right_fit_curve = frame.rightLane.currentFitCurve
+    left_fit_curve = frame.leftLane.fitCurve
+    right_fit_curve = frame.rightLane.fitCurve
     lane_left_x = left_fit_curve[0] * H ** 2 + left_fit_curve[1] * H * 2\
                     + left_fit_curve[2]
     lane_right_x = right_fit_curve[0] * H ** 2 + right_fit_curve[1] * H * 2\
                     + right_fit_curve[2]
     lane_center = (lane_right_x + lane_left_x) / 2
-    frame.distanceFromLaneCenter =  (image_center - lane_center) * xm_per_pix
+
+    frame.distanceFromLaneCenter = np.abs((image_center - lane_center) * xm_per_pix)
+
 
 
 """
@@ -367,3 +409,27 @@ def draw_lane(binary_warped, frame, thickness = 15):
 
 def overlay_lane_region(img, canvas):
     return cv2.addWeighted(img, 1, canvas, 0.5, 0)
+
+
+def write_lane_data(img, frame):
+
+    radius = np.round((frame.leftLane.radius + frame.rightLane.radius) / 2)
+
+    cv2.putText(img,
+    'Radius of Curvature {}(m)'.format(radius),
+    (60,60),
+    fontFace = 16,
+    fontScale = 2,
+    color=(255,255,255),
+    thickness = 2)
+
+    # Print radius of curvature on video
+    cv2.putText(img,
+    'Car is {:03.2f}(m) of Lane center'.format(frame.distanceFromLaneCenter),
+    (60,120),
+    fontFace = 16,
+    fontScale = 2,
+    color=(255,255,255),
+    thickness = 2)
+
+    return img
