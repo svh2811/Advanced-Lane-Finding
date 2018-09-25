@@ -120,5 +120,5 @@ Here's a [link to my video result](./output/output_videos/project_video.mp4)
 ### Future work
 
 01. Lane region detection pipeline is robust to light intensity change, however the alogirthm might not perform satisfactorily when overall light intensity is poor and thus lane line marking might not be detected by our handcrafted algorithm.  
-02.
+02. When car is taking a sharp turn one of the lane line markers might not be captured by dashboard camera as that lane marker might me outside of viewing angle, this algorithm might not be able to handle this scenario.
 03. History of lane detections is important while determining lane region for current frame. We could encode this fact using a higher capacity sequential model like RNN.
