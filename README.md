@@ -105,7 +105,7 @@ method `measure_curvature_real_and_car_distance_from_center()` present in `lane_
 
 `overlay_lane_region()` and `write_lane_data()` function present in file `lane_lines.py` are used to color lane region and write curvature radius and car's distance from center information on video image frame.
 
-![Sliding prior](./examples/example_output.jpg)
+![Sliding prior](./examples/lane_drawn.png)
 
 ---
 
