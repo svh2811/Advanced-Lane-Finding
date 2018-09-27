@@ -103,9 +103,9 @@ method `measure_curvature_real_and_car_distance_from_center()` present in `lane_
 
 #### 6. Drawing Lane.
 
-`overlay_lane_region()` and `write_lane_data()` function present in file `lane_lines.py` are used to color lane region and write curvature radius and car's distance from center information on video image frame.
+`overlay_lane_region()` and `write_lane_data()` function present in file `lane_lines.py` are used to color lane region and write curvature radius and car's distance from center information on video image frame. To improve legibility we calculate curvature radius and car position w.r.t. lane center every `3` frames.  
 
-![Sliding prior](./examples/lane_drawn.png)
+![Sliding prior](./examples/lane-drawn.png)
 
 ---
 
@@ -125,3 +125,4 @@ Here's a [link to my video result](./output/output_videos/project_video.mp4)
 01. Lane region detection pipeline is robust to light intensity change, however the alogirthm might not perform satisfactorily when overall light intensity is poor and thus lane line marking might not be detected by our handcrafted algorithm.  
 02. When car is taking a sharp turn one of the lane line markers might not be captured by dashboard camera as that lane marker might me outside of viewing angle, this algorithm might not be able to handle this scenario.
 03. History of lane detections is important while determining lane region for current frame. We could encode this fact using a higher capacity sequential model like RNN.
+04. Image processing pipeline is slow to use used in realtime.
