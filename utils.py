@@ -5,9 +5,14 @@ import matplotlib.image as mpimg
 import tempfile
 
 from moviepy.editor import VideoFileClip
+from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 
 
-def extract_video_frames(video_file_path, video_length, ts,
+def save_video_subclip(source, start, end, dest):
+    ffmpeg_extract_subclip(source, start, end, targetname=dest)
+
+
+def extract_video_frames(video_file_path, video_length, sts,
                             video_frame_save_dir):
     video = VideoFileClip(video_file_path)  # frame_rate = 25
 
