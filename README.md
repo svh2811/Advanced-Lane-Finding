@@ -71,7 +71,8 @@ The example shown above is of an color image however for our problem we use bina
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![Perspective transform of lane image](./examples/warped_straight_lines.jpg)
+![Perspective transform of lane image 01](./examples/warped_lane_image_01.png)
+![Perspective transform of lane image 02](./examples/warped_lane_image_02.png)
 
 #### 4.Lane line detection
 
@@ -104,7 +105,7 @@ method `measure_curvature_real_and_car_distance_from_center()` present in `lane_
 
 `overlay_lane_region()` and `write_lane_data()` function present in file `lane_lines.py` are used to color lane region and write curvature radius and car's distance from center information on video image frame.
 
-![Sliding prior](./examples/example_output.jpg)
+![Sliding prior](./examples/lane_drawn.png)
 
 ---
 
