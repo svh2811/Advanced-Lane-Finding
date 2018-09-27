@@ -3,7 +3,10 @@ import cv2
 
 
 def gradient_thresh(img, orient="x", sobel_kernel=3, thresh=(20, 100)):
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    if (len(img.shape) == 3):
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = img
     if orient == 'x':
         abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize = sobel_kernel))
     if orient == 'y':
@@ -24,7 +27,10 @@ def gradient_thresh(img, orient="x", sobel_kernel=3, thresh=(20, 100)):
 
 
 def mag_thresh(img, sobel_kernel=3, mag_thresh=(0, 255)):
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    if (len(img.shape) == 3):
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = img
     sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize = sobel_kernel)
     sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize = sobel_kernel)
     gradmag = np.sqrt(sobelx**2 + sobely**2)
