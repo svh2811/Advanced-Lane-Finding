@@ -8,7 +8,7 @@ from curve_queue import QueueCurve
 
 class Frame:
     def __init__(self):
-        self.frameNum = -1
+        self.frameNum = 0
         self.isFirstFrame = True
         self.leftLane = Lane()
         self.rightLane = Lane()
@@ -18,6 +18,9 @@ class Frame:
         self.vizMetadata = None
         self.laneWidth = None
         self.verbose_log = False
+        self.left_curve_error = False
+        self.right_curve_error = False
+        self.stored_frame = None
         #self.curveHistCount = curveHistCount
         #self.leftCurveHist = QueueCurve(curveHistCount)
         #self.rightCurveHist = QueueCurve(curveHistCount)
@@ -42,7 +45,7 @@ margin = the width of the windows +/- margin
 minpix = minimum number of pixels found to recenter window
 """
 def group_lane_pixels_using_sliding_window(binary_warped, frame,
-                                    nwindows = 10, margin = 50, minpix = 50):
+                                    nwindows = 9, margin = 80, minpix = 50):
     H, W = binary_warped.shape
 
     # Take a histogram of the bottom half of the image
@@ -171,7 +174,7 @@ def visualize_sliding_windows(binary_warped, frame):
     return out_img
 
 
-def group_lane_pixels_using_prev_frame(binary_warped, frame, margin = 40):
+def group_lane_pixels_using_prev_frame(binary_warped, frame, margin = 80):
     # margin : the width of the around the previous polynomial to search
 
     # Grab activated pixels
@@ -321,15 +324,41 @@ def process_frame(binary_warped, frame):
         frame.rightLane.fitCurve = right_curve
     """
 
-    frame.leftLane.fitCurve = left_curve
-    frame.rightLane.fitCurve = right_curve
+    frame.left_curve_error = False
+    frame.right_curve_error = False
 
-    frame.leftLane.X = left_fitx
-    frame.leftLane.Y = ploty
-    frame.rightLane.X = right_fitx
-    frame.rightLane.Y = ploty
-    measure_curvature_real_and_car_distance_from_center(frame,
-        binary_warped.shape)
+    if (not frame.isFirstFrame):
+        new_left_curve_np = np.array(left_curve[0])
+        new_right_curve_np = np.array(right_curve[0])
+
+        old_left_curve_np = np.array(frame.leftLane.fitCurve[0])
+        old_right_curve_np = np.array(frame.leftLane.fitCurve[0])
+
+        inc_left_curve = (new_left_curve_np - old_left_curve_np) / old_left_curve_np
+        inc_right_curve = (new_right_curve_np - old_right_curve_np) / old_right_curve_np
+
+        tolerance = 50.0
+        if (np.abs(inc_left_curve) > tolerance):
+            frame.left_curve_error = True
+
+        if (np.abs(inc_right_curve) > tolerance):
+            frame.right_curve_error = True
+
+        if (frame.verbose_log):
+            print(frame.frameNum, np.abs(inc_left_curve), np.abs(inc_right_curve), frame.left_curve_error, frame.right_curve_error)
+
+    # if (not frame.curve_fit_error):
+    if (not frame.left_curve_error):
+        frame.leftLane.fitCurve = left_curve
+        frame.leftLane.X = left_fitx
+        frame.leftLane.Y = ploty
+
+    if (not frame.right_curve_error):
+        frame.rightLane.fitCurve = right_curve
+        frame.rightLane.X = right_fitx
+        frame.rightLane.Y = ploty
+
+    measure_curvature_real_and_car_distance_from_center(frame, binary_warped.shape)
 
     # Create an output image to draw on and visualize the result
     out_img = np.dstack((binary_warped, binary_warped, binary_warped))
@@ -344,24 +373,26 @@ def process_frame(binary_warped, frame):
 # Calculates the curvature of polynomial functions in pixels.
 # https://www.intmath.com/applications-differentiation/8-radius-curvature.php
 def measure_curvature_real_and_car_distance_from_center(frame, dim):
+    if (frame.frameNum != 0 and frame.frameNum % 3 != 0):
+        return
+
     leftx = frame.leftLane.X
     rightx = frame.rightLane.X
-    lane_width = np.mean(np.abs(leftx- rightx))
-    frame.laneWidth = lane_width
-    # Define conversions in x and y from pixels space to meters
+    topN = 4
+    frame.laneWidth = np.mean(np.abs(leftx[:topN] - rightx[:topN]))
+    # Defining conversions in x and y from pixels space to meters
     # Assumptions:
     # Lane length = 30
     # lane min width = 3.7m (U.S. regulation)
     ym_per_pix = 30 / 720 # meters per pixel in y dimension
-    xm_per_pix = 3.7 * 720 / (lane_width * 1280) # meters per pixel in x dimension
+    xm_per_pix = 3.7 / frame.laneWidth # meters per pixel in x dimension
     # Define y-value where we want radius of curvature
     # here maximum y-value was chosen, corresponding to the bottom of the image
     ploty = frame.leftLane.Y
     y_eval = np.max(ploty)
 
-    # Fit new polynomials in world space (from pixel space)
-    left_fit_cr = np.polyfit(ploty * ym_per_pix, leftx * xm_per_pix, 2)
-    right_fit_cr = np.polyfit(ploty * ym_per_pix, rightx * xm_per_pix, 2)
+    left_fit_cr = frame.leftLane.fitCurve
+    right_fit_cr = frame.rightLane.fitCurve
 
     # Calculation of R_curve (radius of curvature)
     a, b, c = left_fit_cr[0], left_fit_cr[1], left_fit_cr[2]
@@ -371,25 +402,17 @@ def measure_curvature_real_and_car_distance_from_center(frame, dim):
     frame.rightLane.radius = ((1 + (2 * a * y_eval * ym_per_pix + b) ** 2)\
                                 ** 1.5) / np.absolute(2 * a)
 
-    # -------------------------------------------------------------------------
+    # -----------------------------------------------------------------------
     H, W = dim
-    image_center = W / 2
-    left_fit_curve = frame.leftLane.fitCurve
-    right_fit_curve = frame.rightLane.fitCurve
-    lane_left_x = left_fit_curve[0] * H ** 2 + left_fit_curve[1] * H * 2\
-                    + left_fit_curve[2]
-    lane_right_x = right_fit_curve[0] * H ** 2 + right_fit_curve[1] * H * 2\
-                    + right_fit_curve[2]
-    lane_center = (lane_right_x + lane_left_x) / 2
-
-    frame.distanceFromLaneCenter = np.abs((image_center - lane_center) * xm_per_pix)
-
+    image_center = W / 2.0
+    lane_center = np.mean((leftx[:topN] + rightx[:topN])) / 2.0
+    frame.distanceFromLaneCenter = (image_center - lane_center) * xm_per_pix
 
 
 """
 binary_warped: thresholded and perspective transformed image (binary birds eye)
 """
-def draw_lane(binary_warped, frame, thickness = 15):
+def draw_lane(binary_warped, frame, thickness = 10):
     # creating a blank images that will serve as canvas
     zero = np.zeros(binary_warped.shape).astype(np.uint8)
     canvas = np.dstack([zero, zero, zero])
@@ -407,11 +430,22 @@ def draw_lane(binary_warped, frame, thickness = 15):
      color = (0, 0, 255), thickness = thickness)
     return canvas
 
+
 def overlay_lane_region(img, canvas):
     return cv2.addWeighted(img, 1, canvas, 0.5, 0)
 
 
 def write_lane_data(img, frame):
+
+    """
+    cv2.putText(img,
+    str(frame.frameNum),
+    (1100, 120),
+    fontFace = 16,
+    fontScale = 2,
+    color=(255, 0, 0),
+    thickness = 2)
+    """
 
     radius = np.round((frame.leftLane.radius + frame.rightLane.radius) / 2)
 
@@ -423,13 +457,43 @@ def write_lane_data(img, frame):
     color=(255,255,255),
     thickness = 2)
 
-    # Print radius of curvature on video
+    if frame.distanceFromLaneCenter < 0.0:
+        str = 'Car is {:03.2f}(m) left of Lane center'.format(-1 * frame.distanceFromLaneCenter)
+    else:
+        str = 'Car is {:03.2f}(m) right of Lane center'.format(frame.distanceFromLaneCenter)
+
     cv2.putText(img,
-    'Car is {:03.2f}(m) of Lane center'.format(frame.distanceFromLaneCenter),
+    str,
     (60,120),
     fontFace = 16,
     fontScale = 2,
     color=(255,255,255),
     thickness = 2)
+
+    cv2.putText(img,
+    'Lane Width is {:03.2f}(m)'.format(frame.laneWidth),
+    (60,180),
+    fontFace = 16,
+    fontScale = 2,
+    color=(255,255,255),
+    thickness = 2)
+
+    if (frame.left_curve_error):
+        cv2.putText(img,
+        'Left Curve Error',
+        (60,240),
+        fontFace = 16,
+        fontScale = 2,
+        color=(255, 0, 0),
+        thickness = 2)
+
+    if (frame.right_curve_error):
+        cv2.putText(img,
+        'Right Curve Error',
+        (700,240),
+        fontFace = 16,
+        fontScale = 2,
+        color=(255, 0, 0),
+        thickness = 2)
 
     return img
