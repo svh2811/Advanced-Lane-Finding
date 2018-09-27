@@ -379,7 +379,7 @@ def measure_curvature_real_and_car_distance_from_center(frame, dim):
     leftx = frame.leftLane.X
     rightx = frame.rightLane.X
     topN = 4
-    frame.laneWidth = np.mean(np.abs(leftx[:topN] - rightx[:topN]))
+    frame.laneWidth = np.abs(leftx[-1] - rightx[-1])
     # Defining conversions in x and y from pixels space to meters
     # Assumptions:
     # Lane length = 30
@@ -405,7 +405,7 @@ def measure_curvature_real_and_car_distance_from_center(frame, dim):
     # -----------------------------------------------------------------------
     H, W = dim
     image_center = W / 2.0
-    lane_center = np.mean((leftx[:topN] + rightx[:topN])) / 2.0
+    lane_center = (leftx[-1] + rightx[-1]) / 2.0
     frame.distanceFromLaneCenter = (image_center - lane_center) * xm_per_pix
 
 
@@ -470,18 +470,10 @@ def write_lane_data(img, frame):
     color=(255,255,255),
     thickness = 2)
 
-    cv2.putText(img,
-    'Lane Width is {:03.2f}(m)'.format(frame.laneWidth),
-    (60,180),
-    fontFace = 16,
-    fontScale = 2,
-    color=(255,255,255),
-    thickness = 2)
-
     if (frame.left_curve_error):
         cv2.putText(img,
         'Left Curve Error',
-        (60,240),
+        (60,180),
         fontFace = 16,
         fontScale = 2,
         color=(255, 0, 0),
@@ -490,7 +482,7 @@ def write_lane_data(img, frame):
     if (frame.right_curve_error):
         cv2.putText(img,
         'Right Curve Error',
-        (700,240),
+        (700,180),
         fontFace = 16,
         fontScale = 2,
         color=(255, 0, 0),
